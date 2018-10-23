@@ -250,14 +250,14 @@ if __name__ == "__main__":
 
     alpha_0 = load_mass/a_rho
     alpha_1 = 1/(alpha_0*a_rho)
+    alpha_2 = (alpha_0*chain_length*a_rho + load_mass)
 
     boundaries = [
-        #sp.Eq(sp.Subs((alpha_0*a_rho*chain_length + load_mass)*ws.diff(z), z, spat_dom[0], evaluate=False), u1)
-        sp.Eq(sp.Subs(ws.diff(z), z, spat_dom[0], evaluate=False), u1)
+        sp.Eq(sp.Subs(ws.diff(z), z, spat_dom[0], evaluate=False), u1/alpha_2)
     ]
 
     # pde
-    nodes = pi.Domain(spat_dom.bounds, num=20)
+    nodes = pi.Domain(spat_dom.bounds, num=5)
     init_funcs = pi.LagrangeFirstOrder.cure_interval(nodes)
     func_label = 'init_funcs'
     pi.register_base(func_label, init_funcs)
@@ -270,7 +270,7 @@ if __name__ == "__main__":
     }
 
     input_map = {
-        u1: ConstantInput()
+        u1: pi.InterpolationTrajectory(temp_dom, force*np.sin(temp_dom.points/10*np.pi))
     }
     dt_terms = [
         ss.InnerProduct(
@@ -278,23 +278,21 @@ if __name__ == "__main__":
         )
         + (ws.diff(t, t)*phi_k).subs(z, chain_length)
     ]
-    a_terms = [(
-        ss.InnerProduct(
-            ws.diff(z),
-            phi_k,
-            spat_dom
-        ) * chain_length -
-        ss.InnerProduct(
+
+    a_terms =[
+        - (ws.diff(z)*phi_k).subs(z, chain_length)*alpha_1*load_mass
+        + (ws.diff(z)*phi_k).subs(z, 0)*alpha_1*alpha_2
+        - ss.InnerProduct(
             ws*ws.diff(z),
-            phi_k,
+            phi_k.diff(z),
             spat_dom
         ) +
         ss.InnerProduct(
             ws.diff(z),
-            phi_k,
+            phi_k.diff(z),
             spat_dom
-        ) * alpha_1 * load_mass)
-        + u1 * phi_k.subs(z, 0) * alpha_1
+        ) * alpha_1 * alpha_2
+        + (ws.diff(z)*phi_k).subs(z, chain_length)
     ]
     weak_form = dt_terms + a_terms
     sp.pprint(weak_form, num_columns=200)
