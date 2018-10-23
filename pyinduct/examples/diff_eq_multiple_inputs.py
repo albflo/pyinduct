@@ -15,7 +15,7 @@ def main():
     spat_dom = pi.Domain(bounds=gamma, num=100)
 
     # create approximation basis
-    nodes = pi.Domain(gamma, num=11)
+    nodes = pi.Domain(gamma, num=3)
     if 0:
         # old interface
         _, fem_funcs = pi.LagrangeSecondOrder.cure_hint(nodes)
@@ -33,8 +33,12 @@ def main():
     psi = pi.TestFunction("fem_base")
     psi_dz = psi.derive(1)
 
-    input1 = pi.Input(pi.ConstantTrajectory(10), index=0)
-    input2 = pi.Input(pi.ConstantTrajectory(-10), index=1)
+    class ConstInput(pi.SimulationInput):
+        def _calc_output(self, **kwargs):
+            return dict(output=10)
+
+    input1 = pi.Input(ConstInput(), index=0)
+    input2 = pi.Input(ConstInput(), index=1)
 
     # enter string with mass equations
     temp_int = pi.IntegralTerm(pi.Product(field_var_dt, psi),
@@ -42,8 +46,8 @@ def main():
     spat_int = pi.IntegralTerm(pi.Product(field_var_dz, psi_dz),
                                limits=gamma,
                                scale=alpha)
-    input_term1 = pi.ScalarTerm(pi.Product(input1, psi(gamma[0])))
-    input_term2 = pi.ScalarTerm(pi.Product(input2, psi(gamma[1])), scale=-1)
+    input_term1 = pi.ScalarTerm(pi.Product(input1, psi(gamma[0])), scale=-alpha)
+    input_term2 = pi.ScalarTerm(pi.Product(input2, psi(gamma[1])), scale=-alpha)
 
     # derive sate-space system
     pde = pi.WeakFormulation([temp_int, spat_int, input_term1, input_term2],

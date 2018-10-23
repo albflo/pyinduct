@@ -8,6 +8,7 @@ from abc import ABCMeta, abstractmethod
 from collections import OrderedDict, Callable
 from copy import copy
 from itertools import chain
+from tqdm import tqdm
 
 import numpy as np
 from scipy.integrate import ode
@@ -242,7 +243,8 @@ class StateSpace(object):
         if input_handles is None:
             self.input = EmptyInput(self.B[0][available_power].shape[1])
         else:
-            self.input = sanitize_input(input_handles, SimulationInput)
+            self.input = input_handles
+            # self.input = sanitize_input(input_handles, SimulationInput)
 
     # TODO export cython code?
     def rhs(self, _t, _q):
@@ -488,8 +490,8 @@ class CanonicalForm(object):
         return self._input_functions
 
     def set_input_function(self, func, index=0):
-        if not isinstance(func, SimulationInput):
-            raise TypeError("Inputs must be of type `SimulationInput`.")
+        # if not isinstance(func, SimulationInput):
+        #     raise TypeError("Inputs must be of type `SimulationInput`.")
 
         if self._input_functions is None:
             self._input_functions = np.atleast_1d(func)
@@ -1248,15 +1250,14 @@ def _compute_product_of_scalars(scalars):
     return res
 
 
-def simulate_state_space(state_space, initial_state, temp_domain, settings=None):
+def simulate_state_space(rhs, initial_state, temp_domain, settings=None):
     r"""
     Wrapper to simulate a system given in state space form:
 
     .. math:: \dot{q} = A_pq^p + A_{p-1}q^{p-1} + \dotsb + A_0q + Bu.
 
     Args:
-        state_space (:py:class:`.StateSpace`): State space formulation of the
-            system.
+        rhs(callable): Right hand-side of the state-space formulation.
         initial_state: Initial state vector of the system.
         temp_domain (:py:class:`.Domain`): Temporal domain object.
         settings (dict): Parameters to pass to the :py:func:`set_integrator`
@@ -1266,13 +1267,10 @@ def simulate_state_space(state_space, initial_state, temp_domain, settings=None)
     Return:
         tuple: Time :py:class:`.Domain` object and weights matrix.
     """
-    if not isinstance(state_space, StateSpace):
-        raise TypeError
-
     q = [initial_state]
     t = [temp_domain[0]]
 
-    r = ode(state_space.rhs)
+    r = ode(rhs)
 
     # TODO check for complex-valued matrices and use 'zvode'
     if settings:
@@ -1288,7 +1286,7 @@ def simulate_state_space(state_space, initial_state, temp_domain, settings=None)
 
     r.set_initial_value(q[0], t[0])
 
-    for t_step in temp_domain[1:]:
+    for t_step in tqdm(temp_domain[1:]):
         qn = r.integrate(t_step)
         if not r.successful():
             warnings.warn("*** Error: Simulation aborted at t={} ***".format(r.t))

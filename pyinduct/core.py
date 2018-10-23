@@ -4,6 +4,7 @@ In the Core module you can find all basic classes and functions which form the b
 import warnings
 import numbers
 
+import sympy as sp
 import numpy as np
 import collections
 from copy import copy, deepcopy
@@ -147,20 +148,24 @@ class Function(BaseFraction):
     or directly provide a callable *eval_handle* and callable
     *derivative_handles* if spatial derivatives are required for the
     application.
+
+    Args:
+        eval_handle (callable): Callable object that can be evaluated.
+        domain((list of) tuples): Domain on which the eval_handle is defined.
+        nonzero(tuple): Region in which the eval_handle will return
+        nonzero output. Must be a subset of *domain*
+        derivative_handles (list): List of callable(s) that contain
+        derivatives of eval_handle
     """
 
+    # nargs = 1
+
     # TODO: overload add and mul operators
+    # def __new__(cls, eval_handle, domain=(-np.inf, np.inf), nonzero=(-np.inf, np.inf), derivative_handles=None):
+    #     obj = super(Function, cls).__new__(cls, sp.S("z"))
+    #     return obj
 
     def __init__(self, eval_handle, domain=(-np.inf, np.inf), nonzero=(-np.inf, np.inf), derivative_handles=None):
-        """
-        Args:
-            eval_handle (callable): Callable object that can be evaluated.
-            domain((list of) tuples): Domain on which the eval_handle is defined.
-            nonzero(tuple): Region in which the eval_handle will return
-                nonzero output. Must be a subset of *domain*
-            derivative_handles (list): List of callable(s) that contain
-                derivatives of eval_handle
-        """
         super().__init__(self)
         self._vectorial = False
         self._function_handle = None
@@ -769,7 +774,7 @@ def domain_intersection(first, second):
         second (set): (Set of) tuples defining the second domain.
 
     Return:
-        set: Intersection given by (start, end) tuples.
+        Set:  Intersection given by (start, end) tuples.
     """
     if isinstance(first, tuple):
         first = [first]
@@ -835,15 +840,17 @@ def domain_intersection(first, second):
     return intersection
 
 
-def integrate_function(func, interval):
+def integrate_function(func, interval, args=()):
     """
     Numerically integrate a function on a given interval using
     :func:`.complex_quadrature`.
 
     Args:
         func(callable): Function to integrate.
-        interval(list of tuples): List of (start, end) values of the intervals
+        interval(set of tuples): Set of (start, end) values of the intervals
             to integrate on.
+    Keyword Args:
+        args(tuple): Optional, extra arguments to pass to func.
 
     Return:
         tuple: (Result of the Integration, errors that occurred during the
@@ -852,7 +859,7 @@ def integrate_function(func, interval):
     result = 0
     err = 0
     for area in interval:
-        res = complex_quadrature(func, area[0], area[1])
+        res = complex_quadrature(func, area[0], area[1], args=args)
         result += res[0]
         err += res[1]
 
@@ -873,11 +880,11 @@ def complex_quadrature(func, a, b, **kwargs):
         tuple: (real part, imaginary part)
     """
 
-    def real_func(x):
-        return np.real(func(x))
+    def real_func(x, *args):
+        return np.real(func(x, *args))
 
-    def imag_func(x):
-        return np.imag(func(x))
+    def imag_func(x, *args):
+        return np.imag(func(x, *args))
 
     real_integral = integrate.quad(real_func, a, b, **kwargs)
     imag_integral = integrate.quad(imag_func, a, b, **kwargs)
@@ -1682,6 +1689,34 @@ def complex_wrapper(func):
                          np.imag(val)])
 
     return wrapper
+
+
+class Bunch(dict):
+    """
+    Subclass of dict for easy handling of data
+
+    Stolen from scipy.optimize.OptimizeResult
+    """
+
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError(name)
+
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+
+    def __repr__(self):
+        if self.keys():
+            m = max(map(len, list(self.keys()))) + 1
+            return '\n'.join([k.rjust(m) + ': ' + repr(v)
+                              for k, v in sorted(self.items())])
+        else:
+            return self.__class__.__name__ + "()"
+
+    def __dir__(self):
+        return list(self.keys())
 
 
 class Parameters:

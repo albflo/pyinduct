@@ -1024,10 +1024,10 @@ class MultipleODETest(unittest.TestCase):
         """
         Let us consider the system of ordinary differential equations
 
-            x1^(3)(t) = x2(t) + u(t)
-            x2^(1)(t) = x1^(2)(t) + u(t).
+            x1_zt^(3)(t) = x2(t) + u(t)
+            x2^(1)(t) = x1_zt^(2)(t) + u(t).
 
-        Desired state space model for x = (x1, x1^(1), x1^(2), x2)^T
+        Desired state space model for x = (x1_zt, x1_zt^(1), x1_zt^(2), x2)^T
 
                     [   0   1   0   0   ]       [0]
            x^(1) =  [   0   0   1   0   ] x +   [0] u.
