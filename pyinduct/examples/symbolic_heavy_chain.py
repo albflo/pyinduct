@@ -242,8 +242,6 @@ if __name__ == "__main__":
     phi_k = ss.get_test_function(z)
 
     param_list = [
-        ("approx_pos", .5),
-        ("approx_order", 2)
     ]
 
     ss.register_parameters(*param_list)

@@ -807,13 +807,14 @@ def create_first_order_system(weak_forms, input_map):
     # new_forms = weak_forms
     # sp.pprint(new_forms, num_columns=200)
 
+    # PROBLEM -> ingoing 10x10 matrix and outgoing 15x10, because of appending
     print(">>> substituting derivatives")
     new_forms, targets = _convert_derivatives(new_forms)
     # sp.pprint(new_forms, num_columns=200)
 
-    print(">>> substituting parameters")
+    # print(">>> substituting parameters")
     new_forms = new_forms.xreplace(get_parameters())
-    # sp.pprint(new_forms, num_columns=200)
+    #sp.pprint(new_forms, num_columns=200)
 
     print(">>> solving integrals")
     new_forms = _solve_integrals(new_forms)
@@ -855,6 +856,7 @@ def create_first_order_system(weak_forms, input_map):
             quit()
 
         print("\t-solving equation system")
+
         ss_form = A.LUsolve(b)
 
     input_derivatives = [d for d in _find_derivatives(weak_forms, time)
@@ -1050,7 +1052,8 @@ def _convert_higher_derivative(weak_forms, derivative):
             new_eq = new_var - red_deriv
             new_der = new_var.diff(time)
             new_forms = weak_forms.xreplace({derivative: new_der})
-            new_forms.append(new_eq)
+            # new_forms.append(new_eq)
+            new_forms = new_forms.row_insert(new_forms.shape[0], sp.Matrix([new_eq]))
 
             # replace remaining derivative
             new_forms, subs_pairs, new_targets = _convert_higher_derivative(
