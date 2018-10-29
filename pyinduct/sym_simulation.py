@@ -104,6 +104,8 @@ def get_function(sym):
 
 _field_var_cnt = 0
 _field_var_letter = "_x"
+_scalar_var_cnt = 0
+_scalar_var_letter = "_s"
 
 
 def get_field_variable(*symbols):
@@ -113,10 +115,16 @@ def get_field_variable(*symbols):
     _field_var_cnt += 1
     return x
 
+def get_scalar_variable(*symbols):
+    global _scalar_var_cnt
+    s = sp.Function("{}_{}".format(_scalar_var_letter, _scalar_var_cnt), real=True)(*symbols)
+    _scalar_var_cnt += 1
+    return s
 
 _test_function_cnt = 0
 _test_function_letter = "_g"
-
+_test_func_single_cnt = 0
+_test_func_single_letter = "_h"
 
 def get_test_function(*symbols):
     global _test_function_cnt
@@ -125,6 +133,11 @@ def get_test_function(*symbols):
     _test_function_cnt += 1
     return g
 
+def get_test_func_single(*symbols):
+    global _test_func_single_cnt
+    h = sp.Function("{}_{}".format(_test_func_single_letter, _test_func_single_cnt), real=True)(*symbols)
+    _test_func_single_cnt += 1
+    return h
 
 _input_cnt = 0
 _input_letter = "_u"
@@ -569,6 +582,35 @@ def create_approximation(syms, base_lbl, boundary_conditions, weights=None):
 
     # extract shape functions which are to be kept
     nat_funcs = [func for idx, func in enumerate(base) if idx not in ess_idxs]
+
+    # homogeneous part
+    x_nat = 0
+    if weights is None:
+        weights = get_weights(len(nat_funcs))
+    for idx, func in enumerate(nat_funcs):
+        d_func = get_base_fraction_symbol(func, sym)
+        x_nat += weights[idx] * d_func
+        base_mapping[d_func] = func, False
+
+    x_approx = LumpedApproximation([sym],
+                                   x_ess, x_nat,
+                                   weights,
+                                   base_mapping,
+                                   boundary_conditions)
+
+    return x_approx
+
+def create_approximation_new(syms, base_lbl, weights=None):
+    if isinstance(syms, sp.Basic):
+        syms = [syms]
+    if len(syms) > 1:
+        raise NotImplementedError("Higher dimensional cases are still missing")
+    sym = syms[0]
+    base = get_base(base_lbl)
+
+    base_mapping = {}
+
+
 
     # homogeneous part
     x_nat = 0

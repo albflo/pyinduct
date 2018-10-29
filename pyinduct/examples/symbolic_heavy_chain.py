@@ -10,76 +10,6 @@ import pyinduct.sym_simulation as ss
 
 __author__ = 'albflo'
 
-class ConstantInput(pi.SimulationInput):
-
-    def __init__(self):
-        pi.SimulationInput.__init__(self)
-
-    def _calc_output(self, **kwargs):
-        t = kwargs["time"]
-        if t < 1:
-            val = 0
-        elif t < 2:
-            val = -force
-        elif t < 4:
-            val = 0
-        elif t < 5:
-            val = force
-        else:
-            val = 0
-
-        return dict(output=val)
-
-
-def heavy_chain(func_label, input_handle, l=1, ml=1.0, g=9.81, rho=1.0):
-    """
-    returns weak formulation of the heavy chain
-    :param shape_funcs:
-    :param input_handle:
-    :param l:
-    :param ml:
-    :param g:
-    :param rho:
-    """
-    alpha_0 = ml/rho
-    alpha_1 = 1/(alpha_0*rho)
-
-    w = pi.FieldVariable(func_label)
-    phi = pi.TestFunction(func_label)
-
-    dt_terms = [
-        pi.IntegralTerm(pi.Product(
-            w.derive(temp_order=2),
-            phi), spat_dom.bounds, scale=1
-        ),
-        pi.ScalarTerm(pi.Product(
-            w.derive(temp_order=2)(l),
-            phi(l)
-            ), scale=1
-        )
-    ]
-
-    tau = pi.Function(lambda z: g*(alpha_0*rho*(l - z) + ml))
-    pi.register_base("tau", pi.Base([tau]))
-    a_terms = [
-        pi.IntegralTerm(
-            pi.Product(
-                pi.Product(
-                    pi.ScalarFunction("tau"),
-                    w.derive(spat_order=1)),
-                phi.derive(1)
-            ), spat_dom.bounds, scale=alpha_1
-        ),
-        pi.ScalarTerm(
-            pi.Product(
-                pi.Input(input_handle),
-                phi(0)
-            ), scale=alpha_1
-        )
-    ]
-    return pi.WeakFormulation(dt_terms + a_terms, name="hc")
-
-
 def view_transform(data, node_dist, node_cnt, x_offset, y_offset):
     """
     transforms simulated data into from that is better to view
@@ -214,14 +144,13 @@ def hc_visualization(eval_data, nodes, show=True):
 if __name__ == "__main__":
     app = QApplication([])
 
-    load_mass = 4e1
-    a_rho = 1e0
-    gravity = 9.81
-    chain_length = 1
-    force = 1e1
+    m_l = 4e1
+    rho = 1e0
+    gty = 9.81
+    l_c = 1
 
     z_start = 0
-    z_end = chain_length
+    z_end = l_c
     z_step = .1
     spat_dom = pi.Domain(bounds=(z_start, z_end), step=z_step)
 
@@ -230,37 +159,39 @@ if __name__ == "__main__":
     t_step = 0.01
     temp_dom = pi.Domain(bounds=(t_start, t_end), step=t_step)
 
-    node_distance = chain_length / 20
+    node_distance = l_c / 20
 
     t = ss.time
     z = ss.space[0]
 
     u1 = ss.get_input()
+    # Zustand: w, v, xi, psi
+    w_s = ss.get_field_variable(z, t)
+    v_s = ss.get_field_variable(z, t)
+    xi_s = ss.get_scalar_variable(t)
+    psi_s = ss.get_scalar_variable(t)
 
-    ws = ss.get_field_variable(z, t)
+    # Spezielle Testfunktionen erstellen
+    phi_w = ss.get_test_function(z)
+    phi_v = ss.get_test_function(z)
+    phi_xi = ss.get_test_func_single(z)
+    phi_psi = ss.get_test_func_single(z)
 
-    phi_k = ss.get_test_function(z)
+    # ss.register_parameters(*param_list)
 
-    param_list = [
-    ]
-
-    ss.register_parameters(*param_list)
-
-    alpha_0 = load_mass/a_rho
-    alpha_1 = 1/(alpha_0*a_rho)
-    alpha_2 = (alpha_0*chain_length*a_rho + load_mass)
-
-    boundaries = [
-        sp.Eq(sp.Subs(ws.diff(z), z, spat_dom[0], evaluate=False), u1/alpha_2)
-    ]
+    alpha_0 = m_l/rho
+    alpha_1 = 1/(alpha_0*rho)
 
     # pde
-    nodes = pi.Domain(spat_dom.bounds, num=5)
-    init_funcs = pi.LagrangeFirstOrder.cure_interval(nodes)
-    func_label = 'init_funcs'
-    pi.register_base(func_label, init_funcs)
-
-    ws_approx = ss.create_approximation(z, func_label, boundaries)
+    nodes = pi.Domain(spat_dom.bounds, num=3)
+    init_w = pi.LagrangeFirstOrder.cure_interval(nodes)
+    init_v = pi.LagrangeFirstOrder.cure_interval(nodes)
+    init_xi = 0
+    init_psi = 0
+    pi.register_base("init_w", init_w)
+    pi.register_base("init_v", init_v)
+    # ws_approx = ss.create_approximation(z, func_label, boundaries)
+    w_s_ax = ss.create_approximation_new(z, "init_w")
 
     ics = {
         ws_approx: 0,
