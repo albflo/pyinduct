@@ -238,8 +238,10 @@ if __name__ == "__main__":
     u1 = ss.get_input()
 
     ws = ss.get_field_variable(z, t)
+    vs = ss.get_field_variable(z, t)
 
-    phi_k = ss.get_test_function(z)
+    phi_ws_k = ss.get_test_function(z)
+    phi_vs_k = ss.get_test_function(z)
 
     param_list = [
     ]
@@ -255,49 +257,64 @@ if __name__ == "__main__":
     ]
 
     # pde
-    nodes = pi.Domain(spat_dom.bounds, num=5)
-    init_funcs = pi.LagrangeFirstOrder.cure_interval(nodes)
-    func_label = 'init_funcs'
-    pi.register_base(func_label, init_funcs)
+    nodes = pi.Domain(spat_dom.bounds, num=3)
+    init_funcs_ws = pi.LagrangeFirstOrder.cure_interval(nodes)
+    init_funcs_vs = pi.LagrangeFirstOrder.cure_interval(nodes)
+    func_label_ws = 'init_funcs_ws'
+    func_label_vs = 'init_funcs_vs'
+    pi.register_base(func_label_ws, init_funcs_ws)
+    pi.register_base(func_label_vs, init_funcs_vs)
 
-    ws_approx = ss.create_approximation(z, func_label, boundaries)
+    ws_approx = ss.create_approximation(z, func_label_ws, boundaries)
+    vs_approx = ss.create_approximation(z, func_label_vs, boundaries)
 
     ics = {
         ws_approx: 0,
+        vs_approx: 0,
         u1: 0
     }
 
     input_map = {
         u1: pi.InterpolationTrajectory(temp_dom, force*np.sin(temp_dom.points/10*np.pi))
     }
+
     dt_terms = [
         ss.InnerProduct(
-            ws.diff(t, t), phi_k, spat_dom
+            ws.diff(t), phi_ws_k, spat_dom
         )
-        + (ws.diff(t, t)*phi_k).subs(z, chain_length)
+        + ss.InnerProduct(
+            vs.diff(t), phi_vs_k, spat_dom
+        )
     ]
 
     a_terms =[
-        - (ws.diff(z)*phi_k).subs(z, chain_length)*alpha_1*load_mass
-        + (ws.diff(z)*phi_k).subs(z, 0)*alpha_1*alpha_2
         - ss.InnerProduct(
-            ws*ws.diff(z),
-            phi_k.diff(z),
-            spat_dom
-        ) +
-        ss.InnerProduct(
-            ws.diff(z),
-            phi_k.diff(z),
-            spat_dom
-        ) * alpha_1 * alpha_2
-        + (ws.diff(z)*phi_k).subs(z, chain_length)
+            vs, phi_vs_k, spat_dom
+        )
+        - ss.InnerProduct(
+            ws.diff(z).subs(z, chain_length), phi_ws_k.subs(z, chain_length), spat_dom
+        )*alpha_1*alpha_2
+        + ss.InnerProduct(
+            z.subs(z, chain_length) * ws.diff(z).subs(z, chain_length), phi_ws_k.subs(z, chain_length), spat_dom
+        )*alpha_1
+        + ss.InnerProduct(
+            ws.diff(z).subs(z, 0), phi_ws_k.subs(z, 0), spat_dom
+        )*alpha_1*alpha_2
+        + ss.InnerProduct(
+            ws.diff(z), phi_ws_k.diff(z), spat_dom
+        )*alpha_1*alpha_2
+        - ss.InnerProduct(
+            z*ws.diff(z), phi_ws_k.diff(z), spat_dom
+        )*alpha_1
     ]
     weak_form = dt_terms + a_terms
     sp.pprint(weak_form, num_columns=200)
 
     rep_dict = {
         ws: ws_approx,
-        phi_k: ws_approx.base
+        vs: vs_approx,
+        phi_ws_k: ws_approx.base,
+        phi_vs_k: vs_approx.base
     }
 
     results = ss.simulate_system(weak_form, rep_dict, input_map, ics, temp_dom, spat_dom)

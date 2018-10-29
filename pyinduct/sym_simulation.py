@@ -1052,8 +1052,8 @@ def _convert_higher_derivative(weak_forms, derivative):
             new_eq = new_var - red_deriv
             new_der = new_var.diff(time)
             new_forms = weak_forms.xreplace({derivative: new_der})
-            # new_forms.append(new_eq)
-            new_forms = new_forms.row_insert(new_forms.shape[0], sp.Matrix([new_eq]))
+            new_forms.append(new_eq)
+            #new_forms = new_forms.row_insert(new_forms.shape[0], sp.Matrix([new_eq]))
 
             # replace remaining derivative
             new_forms, subs_pairs, new_targets = _convert_higher_derivative(
