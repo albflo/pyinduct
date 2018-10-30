@@ -252,8 +252,9 @@ if __name__ == "__main__":
     alpha_1 = 1/(alpha_0*a_rho)
     alpha_2 = (alpha_0*chain_length*a_rho + load_mass)
 
-    boundaries = [
-        sp.Eq(sp.Subs(ws.diff(z), z, spat_dom[0], evaluate=False), u1/alpha_2)
+    boundaries_ws = [
+    ]
+    boundaries_vs = [
     ]
 
     # pde
@@ -265,8 +266,8 @@ if __name__ == "__main__":
     pi.register_base(func_label_ws, init_funcs_ws)
     pi.register_base(func_label_vs, init_funcs_vs)
 
-    ws_approx = ss.create_approximation(z, func_label_ws, boundaries)
-    vs_approx = ss.create_approximation(z, func_label_vs, boundaries)
+    ws_approx = ss.create_approximation(z, func_label_ws, boundaries_ws)
+    vs_approx = ss.create_approximation(z, func_label_vs, boundaries_vs)
 
     ics = {
         ws_approx: 0,
@@ -291,29 +292,28 @@ if __name__ == "__main__":
         - ss.InnerProduct(
             vs, phi_vs_k, spat_dom
         )
+        + ss.InnerProduct(
+            ws.diff(z), phi_ws_k, spat_dom
+        )
+        - load_mass*(phi_ws_k*ws.diff(z)).subs(z, chain_length)
+        + u1*phi_ws_k.subs(z, 0)*alpha_1
         - ss.InnerProduct(
-            ws.diff(z).subs(z, chain_length), phi_ws_k.subs(z, chain_length), spat_dom
-        )*alpha_1*alpha_2
-        + ss.InnerProduct(
-            z.subs(z, chain_length) * ws.diff(z).subs(z, chain_length), phi_ws_k.subs(z, chain_length), spat_dom
-        )*alpha_1
-        + ss.InnerProduct(
-            ws.diff(z).subs(z, 0), phi_ws_k.subs(z, 0), spat_dom
-        )*alpha_1*alpha_2
+            ws.diff(z), phi_ws_k, spat_dom
+        )
         + ss.InnerProduct(
             ws.diff(z), phi_ws_k.diff(z), spat_dom
         )*alpha_1*alpha_2
         - ss.InnerProduct(
             z*ws.diff(z), phi_ws_k.diff(z), spat_dom
-        )*alpha_1
+        )
     ]
     weak_form = dt_terms + a_terms
     sp.pprint(weak_form, num_columns=200)
 
     rep_dict = {
         ws: ws_approx,
-        vs: vs_approx,
         phi_ws_k: ws_approx.base,
+        vs: vs_approx,
         phi_vs_k: vs_approx.base
     }
 
