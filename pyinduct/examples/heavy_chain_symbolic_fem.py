@@ -35,11 +35,11 @@ u = var_pool.new_implemented_function("u", (input_arg,), input_, "input")
 input_vector = sp.Matrix([u])
 
 # system parameters
-m_l = 1                 # [kg]
+m_l = 4e0                 # [kg]
 rho = 1# 1.78              # [kg/mm] -> line density
 gravity = 9.81
 l_hc = 1 # m
-A_hc = 1 # 2.4*8*14.85 # m**2 -> cross sectional area of chain
+A_hc = m_l/rho # 2.4*8*14.85 # m**2 -> cross sectional area of chain
 
 # define approximation base and symbols
 nodes = pi.Domain(spat_bounds, num=N)
@@ -76,6 +76,7 @@ sy.pprint(test_funcs_v, "test functions", N)
 # project on test functions
 projections = list()
 limits = (z, spat_bounds[0], spat_bounds[1])
+tau = gravity * (A_hc * rho * l_hc - A_hc * rho * z + m_l)
 for psi_w, psi_v in zip(test_funcs_w, test_funcs_v):
     projections.append(
         sp.Integral(sp.diff(w_approx, t) * psi_w, limits)
