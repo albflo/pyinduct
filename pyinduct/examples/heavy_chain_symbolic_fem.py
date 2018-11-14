@@ -86,11 +86,32 @@ def hc_visualization(eval_data, nodes, show=True):
     return x, y
 
 
+class ConstantInput(pi.SimulationInput):
+
+    def __init__(self):
+        pi.SimulationInput.__init__(self)
+
+    def _calc_output(self, **kwargs):
+        t = kwargs["time"]
+        if t < 1:
+            val = 0
+        elif t < 2:
+            val = -1
+        elif t < 4:
+            val = 0
+        elif t < 5:
+            val = 1
+        else:
+            val = 0
+
+        return dict(output=val)
+
+
 # spatial approximation order
-N = 50
+N = 2
 
 # temporal domain
-T = 5
+T = 10
 temp_dom = pi.Domain((0, T), num=100)
 
 # spatial domain
@@ -100,8 +121,9 @@ spat_dom = pi.Domain(spat_bounds, num=100)
 
 # system input implementation
 input_ = sy.SimulationInputWrapper(pi.SimulationInputSum([
-    pi.SignalGenerator('sawtooth', np.array(temp_dom), frequency=0.2,
-                       scale=1, offset=0, phase_shift=0)
+    ConstantInput()
+    # pi.SignalGenerator('sawtooth', np.array(temp_dom), frequency=0.2,
+    #                    scale=1, offset=0, phase_shift=0)
 ]))
 
 # variables
