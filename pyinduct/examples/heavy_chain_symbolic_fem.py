@@ -4,14 +4,14 @@ import pyinduct as pi
 import pyinduct.symbolic as sy
 
 # spatial approximation order
-N = 2
+N = 20
 
 # temporal domain
 T = 5
 temp_dom = pi.Domain((0, T), num=100)
 
 # spatial domain
-l = 1
+l = 1.25
 spat_bounds = (0, l)
 spat_dom = pi.Domain(spat_bounds, num=100)
 
@@ -35,10 +35,9 @@ u = var_pool.new_implemented_function("u", (input_arg,), input_, "input")
 input_vector = sp.Matrix([u])
 
 # system parameters
-m_l = 4e0                 # [kg]
-rho = 1# 1.78              # [kg/mm] -> line density
+m_l = 1e0                 # [kg]
+rho = 1.78# 1.78              # [kg/mm] -> line density
 gravity = 9.81
-l_hc = 1 # m
 A_hc = m_l/rho # 2.4*8*14.85 # m**2 -> cross sectional area of chain
 
 # define approximation base and symbols
@@ -47,14 +46,17 @@ fem_base = pi.LagrangeFirstOrder.cure_interval(nodes)
 pi.register_base("complete_base", pi.Base(list(fem_base.fractions)*2))
 pi.register_base("fem_base", fem_base)
 init_funcs_w = var_pool.new_implemented_functions(
-    ["phiw{}".format(i) for i in range(N)], [(z,)] * N,
+    ["phi_{w" + str(i) + "}" for i in range(N)], [(z,)] * N,
     fem_base.fractions, "initial functions w")
 init_funcs_v = var_pool.new_implemented_functions(
-    ["phiv{}".format(i) for i in range(N)], [(z,)] * N,
+    ["phi_{v" + str(i) + "}" for i in range(N)], [(z,)] * N,
     fem_base.fractions, "initial functions v")
-test_funcs_half = sp.Matrix(var_pool.new_implemented_functions(
-    ["psiw{}".format(i) for i in range(N)], [(z,)] * N,
+test_funcs_half_w = sp.Matrix(var_pool.new_implemented_functions(
+    ["psi_{w" + str(i) + "}" for i in range(N)], [(z,)] * N,
     fem_base.fractions, "test functions w"))
+test_funcs_half_v = sp.Matrix(var_pool.new_implemented_functions(
+    ["psi_{v" + str(i) + "}" for i in range(N)], [(z,)] * N,
+    fem_base.fractions, "test functions v"))
 
 # build approximation
 weights_w = sp.Matrix(var_pool.new_functions(
@@ -68,15 +70,15 @@ sy.pprint(v_approx, "approximation of v", N)
 
 # complete weights vector and set of test function
 weights = sp.Matrix.vstack(weights_w, weights_v)
-test_funcs_w = sp.Matrix.vstack(test_funcs_half, test_funcs_half * 0)
-test_funcs_v = sp.Matrix.vstack(test_funcs_half * 0, test_funcs_half)
-sy.pprint(test_funcs_w, "test functions", N)
-sy.pprint(test_funcs_v, "test functions", N)
+test_funcs_w = sp.Matrix.vstack(test_funcs_half_w, test_funcs_half_v * 0)
+test_funcs_v = sp.Matrix.vstack(test_funcs_half_w * 0, test_funcs_half_v)
+sy.pprint(test_funcs_w, "test functions of w", N)
+sy.pprint(test_funcs_v, "test functions of v", N)
 
 # project on test functions
 projections = list()
 limits = (z, spat_bounds[0], spat_bounds[1])
-tau = gravity * (A_hc * rho * l_hc - A_hc * rho * z + m_l)
+tau = gravity * (A_hc * rho * l - A_hc * rho * z + m_l)
 for psi_w, psi_v in zip(test_funcs_w, test_funcs_v):
     projections.append(
         sp.Integral(sp.diff(w_approx, t) * psi_w, limits)
@@ -94,6 +96,7 @@ sy.pprint(projections, "projections", N)
 
 # evaluate integrals
 projections = sy.evaluate_integrals(projections)
+sy.pprint(projections, "evaluated integrals in projections", N)
 
 # evaluate remaining implemented functions
 projections = sy.evaluate_implemented_functions(projections)
