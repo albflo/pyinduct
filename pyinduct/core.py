@@ -24,7 +24,7 @@ __all__ = ["Domain", "EvalData", "Parameters",
            "project_on_base", "change_projection_base", "back_project_from_base",
            "calculate_scalar_product_matrix", "calculate_base_transformation_matrix",
            "calculate_expanded_base_transformation_matrix", "dot_product_l2",
-           "generic_scalar_product"]
+           "generic_scalar_product", "integrate_function"]
 
 
 def sanitize_input(input_object, allowed_type):

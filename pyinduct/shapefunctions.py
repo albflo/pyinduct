@@ -9,7 +9,7 @@ import warnings
 import numpy as np
 import numpy.polynomial.polynomial as npoly
 
-from .core import Base, Function, Domain
+from .core import Base, Function, Domain, integrate_function
 
 __all__ = ["LagrangeFirstOrder", "LagrangeSecondOrder", "LagrangeNthOrder", "cure_interval"]
 
@@ -281,6 +281,40 @@ class LagrangeNthOrder(ShapeFunction):
                                      domain=bounds)
 
         return Base(funcs)
+
+    @staticmethod
+    def integrate(funcs, nodes, direction=-1):
+        try:
+            func_iter = iter(funcs)
+        except TypeError:
+            raise TypeError("Functions object not iterable")
+        funcs_int = np.empty(nodes.shape[0], Function)
+        for func in funcs:
+            if not isinstance(func, Function):
+                raise ValueError("Input is no pyinduct Function")
+            direction = int(direction)
+            if direction < 0:
+                start = nodes.shape[0] - 1
+                end = 0
+            elif direction > 0:
+                start = 0
+                end = nodes.shape[0] - 1
+            else:
+                raise ValueError("Direction can't be zero")
+            zero_nodes = []
+            nonzero_nodes = []
+            nonzero_value = 0.0
+            nonzero_error = 0.0
+            for i in range(start, end, direction):
+                value = integrate_function(func, {(nodes.points[i-1], nodes.points[i])})
+                if value[0] == 0.0:
+                    zero_nodes.append(i)
+                else:
+                    nonzero_nodes.append(i)
+                    nonzero_value += value[0]
+                    nonzero_error += value[1]
+            print("zero nodes: ", zero_nodes)
+            print("nonzero nodes: ", nonzero_nodes, " with value = ", nonzero_value, " and error = ",nonzero_error)
 
 
 class LagrangeFirstOrder(ShapeFunction):
