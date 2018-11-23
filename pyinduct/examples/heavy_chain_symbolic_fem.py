@@ -163,10 +163,10 @@ test_funcs_half_v = sp.Matrix(var_pool.new_implemented_functions(
     ["psi_{v" + str(i) + "}" for i in range(N)], [(z,)] * N,
     fem_base.fractions, "test functions v"))
 
-fem_base_integral = pi.LagrangeNthOrder.cure_interval(nodes, order=1)
-pi.visualize_functions(fem_base_integral.fractions[0], 100)
-funcs = fem_base_integral.fractions
-pi.LagrangeNthOrder.integrate(funcs, nodes)
+# fem_base_integral = pi.LagrangeNthOrder.cure_interval(nodes, order=1)
+# pi.visualize_functions(fem_base_integral.fractions[0], 100)
+# funcs = fem_base_integral.fractions
+# pi.LagrangeNthOrder.integrate(funcs, nodes)
 
 # build approximation
 weights_w = sp.Matrix(var_pool.new_functions(

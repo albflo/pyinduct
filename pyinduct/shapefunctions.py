@@ -131,7 +131,8 @@ class LagrangeNthOrder(ShapeFunction):
                           nonzero=(nodes[0], nodes[-1]),
                           derivative_handles=funcs[1:])
 
-    def _poly_factory(self, zero_nodes, one_node):
+    @staticmethod
+    def _poly_factory(zero_nodes, one_node):
         poly = npoly.Polynomial(npoly.polyfromroots(zero_nodes))
         return npoly.Polynomial(poly.coef / poly(one_node))
 
@@ -285,11 +286,11 @@ class LagrangeNthOrder(ShapeFunction):
     @staticmethod
     def integrate(funcs, nodes, direction=-1):
         try:
-            func_iter = iter(funcs)
+            iter(funcs)
         except TypeError:
             raise TypeError("Functions object not iterable")
         funcs_int = np.empty(nodes.shape[0], Function)
-        for func in funcs:
+        for func, func_int in zip(funcs, funcs_int):
             if not isinstance(func, Function):
                 raise ValueError("Input is no pyinduct Function")
             direction = int(direction)
@@ -301,20 +302,29 @@ class LagrangeNthOrder(ShapeFunction):
                 end = nodes.shape[0] - 1
             else:
                 raise ValueError("Direction can't be zero")
-            zero_nodes = []
-            nonzero_nodes = []
+            zero_part = []
+            nonzero_part = []
             nonzero_value = 0.0
             nonzero_error = 0.0
             for i in range(start, end, direction):
                 value = integrate_function(func, {(nodes.points[i-1], nodes.points[i])})
                 if value[0] == 0.0:
-                    zero_nodes.append(i)
+                    zero_part.append(i)
                 else:
-                    nonzero_nodes.append(i)
+                    nonzero_part.append(i)
                     nonzero_value += value[0]
                     nonzero_error += value[1]
-            print("zero nodes: ", zero_nodes)
-            print("nonzero nodes: ", nonzero_nodes, " with value = ", nonzero_value, " and error = ",nonzero_error)
+            print("zero part: ", zero_part)
+            print("nonzero part: ", nonzero_part, " with value = ", nonzero_value, " and error = ", nonzero_error)
+
+            if len(nonzero_part) > 2:
+                pass
+            else:
+                pass
+            # LagrangeNthOrder._poly_factory(zeronodes, onenodes)
+        # TODO finish it for the LagrangeNthOrder
+
+        return Base(funcs_int) # <- in the end should get returned a base
 
 
 class LagrangeFirstOrder(ShapeFunction):
