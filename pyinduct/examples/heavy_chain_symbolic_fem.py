@@ -111,7 +111,7 @@ class ConstantInput(pi.SimulationInput):
 N = 5
 
 # temporal domain
-T = 10
+T = 6
 temp_dom = pi.Domain((0, T), num=100)
 
 # spatial domain
@@ -139,6 +139,7 @@ input_arg = var_pool.new_symbol("input_arg", "simulation input argument")
 u = var_pool.new_implemented_function("u", (input_arg,), input_, "input")
 input_vector = sp.Matrix([u])
 
+
 # system parameters
 m_l = 1e0                 # [kg]
 rho = 1.78# 1.78              # [kg/mm] -> line density
@@ -163,11 +164,6 @@ test_funcs_half_v = sp.Matrix(var_pool.new_implemented_functions(
     ["psi_{v" + str(i) + "}" for i in range(N)], [(z,)] * N,
     fem_base.fractions, "test functions v"))
 
-# fem_base_integral = pi.LagrangeNthOrder.cure_interval(nodes, order=1)
-# pi.visualize_functions(fem_base_integral.fractions[0], 100)
-# funcs = fem_base_integral.fractions
-# pi.LagrangeNthOrder.integrate(funcs, nodes)
-
 # build approximation
 weights_w = sp.Matrix(var_pool.new_functions(
     ["c_{w" + str(i) + "}" for i in range(N)], [(t,)] * N, "approximation weights for w"))
@@ -185,11 +181,19 @@ test_funcs_v = sp.Matrix.vstack(test_funcs_half_w * 0, test_funcs_half_v)
 sy.pprint(test_funcs_w, "test functions of w", N)
 sy.pprint(test_funcs_v, "test functions of v", N)
 
+# creating functions for the integration of the testfunction
+limits_wint = (z, l)
+wint_base = pi.Base([pi.IntegrateFunction(psi_j, limits_wint) for psi_j in fem_base])
+test_funcs_half_wint = sp.Matrix(var_pool.new_implemented_functions(
+    ["psi_{wvel" + str(i) + "}" for i in range(N)], [(z,)] * N,
+    wint_base.fractions, "integrated test functions of w"))
+test_funcs_wint = sp.Matrix.vstack(test_funcs_half_wint, test_funcs_half_v * 0)
+
 # project on test functions
 projections = list()
 limits = (z, spat_bounds[0], spat_bounds[1])
 tau = gravity * (A_hc * rho * l - A_hc * rho * z + m_l)
-for psi_w, psi_v in zip(test_funcs_w, test_funcs_v):
+for psi_w, psi_wvel, psi_v in zip(test_funcs_w, test_funcs_wint, test_funcs_v):
     projections.append(
         sp.Integral(sp.diff(w_approx, t) * psi_w, limits)
         + sp.Integral(sp.diff(v_approx, t) * psi_v, limits)
