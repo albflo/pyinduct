@@ -28,10 +28,6 @@ class IntegrateFunctionClassTestClass(unittest.TestCase):
         self.assertAlmostEqual(intfunc(np.pi/4), 1/np.sqrt(2), places=7,
                                msg="Result of integration with variable limit"
                                    "is wrong!")
-        intfunc = utils.IntegrateFunction(self.sinfun, (np.pi/2, self.t))
-        self.assertAlmostEqual(intfunc(np.pi/4), -1/np.sqrt(2), places=7,
-                               msg="Result of integration with variable limit"
-                                   "is wrong!")
         intfunc = utils.IntegrateFunction(self.sinfun, (np.pi/4, np.pi/2))
         self.assertAlmostEqual(intfunc(), 1/np.sqrt(2), places=7,
                                msg="Result of integration with numerical limits"
