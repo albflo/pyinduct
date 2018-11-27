@@ -2,109 +2,8 @@ import sympy as sp
 import numpy as np
 import pyinduct as pi
 import pyinduct.symbolic as sy
-import pyqtgraph as pg
-
-
-def view_transform(data, node_dist, node_cnt, x_offset, y_offset):
-    """
-    transforms simulated data into from that is better to view
-    :param data: eval_data from simulation run
-    :return: transformed data
-    """
-    print(">>> preparing visualization data")
-    t_values = data.input_data[0]
-    t_step = t_values[1]
-    z_values = data.input_data[1]
-    z_step = z_values[1]
-    # invert spatially since iteration is easier from 0 to l
-    w_values = data.output_data[..., ::-1]
-
-    # gradient method
-    w = w_values
-    grad = np.gradient(w, t_step, z_step)
-    w_dt = grad[0]
-    w_dz = grad[1]
-
-    # create eval_data
-    w_interp = pi.EvalData(data.input_data, w)
-    w_dt_interp = pi.EvalData(data.input_data, w_dt)
-    w_dz_interp = pi.EvalData(data.input_data, w_dz, name="spline dz")
-
-    # calculate coordinates
-    x_values = np.zeros(w_values.shape)
-    y_values = np.zeros(w_values.shape)
-
-    w_len = w_values.shape[1]
-    for t_idx, t_val in enumerate(t_values):
-        for z_idx, z_val in enumerate(z_values):
-            if z_idx == 0:
-                x_values[t_idx, z_idx] = x_offset + w_values[t_idx, z_idx]
-                y_values[t_idx, z_idx] = y_offset
-            else:
-                x_values[t_idx, z_idx] = x_values[t_idx, z_idx-1] + \
-                                         np.sin(w_dz[t_idx, z_idx-1])*z_step
-                y_values[t_idx, z_idx] = y_values[t_idx, z_idx-1] -\
-                                         np.cos(w_dz[t_idx, z_idx-1])*z_step
-
-    print("done!")
-    return x_values, y_values, [w_interp, w_dt_interp, w_dz_interp]
-
-
-def hc_visualization(eval_data, nodes, show=True):
-    """
-    wrapper that draws visualization of the heavy chain, using the simulation output
-    :param eval_data:
-    :param nodes:
-    :return:
-    """
-    x, y, interpolations = view_transform(eval_data[0], nodes[1]-nodes[0],
-                                          len(nodes), 0, nodes[-1])
-    win = pg.plot(title="heavy chain visualization")
-    param_plt = pg.PlotDataItem(symbol="o", symbolPen=pg.mkPen(None))
-    scatter_plt = pg.ScatterPlotItem(pen=pg.mkPen(None), symbol="o")
-    win.setXRange(np.min(x), np.max(x))
-    win.setYRange(np.min(y), np.max(y))
-    win.showGrid(x=True, y=True, alpha=.7)
-    win.setAspectLocked(ratio=1, lock=True)
-    win.addItem(param_plt)
-    win.addItem(scatter_plt)
-    param_plt.getViewBox().invertY(True)
-
-    def update_plt():
-        if "frame_cnt" not in update_plt.__dict__ or update_plt.frame_cnt == x.shape[0] - 1:
-            update_plt.frame_cnt = 0
-        else:
-            update_plt.frame_cnt += 1
-        param_plt.setData(x=x[update_plt.frame_cnt, :], y=y[update_plt.frame_cnt, :],
-                          symbol=None, pen=pg.mkPen('b', width=2))
-
-    hc_visualization.timer = pg.QtCore.QTimer()
-    hc_visualization.timer.timeout.connect(update_plt)
-    if show:
-        hc_visualization.timer.start(1e3 * eval_data[0].input_data[0][1])
-
-    return x, y
-
-
-class ConstantInput(pi.SimulationInput):
-
-    def __init__(self):
-        pi.SimulationInput.__init__(self)
-
-    def _calc_output(self, **kwargs):
-        t = kwargs["time"]
-        if t < 1:
-            val = 0
-        elif t < 2:
-            val = -1
-        elif t < 4:
-            val = 0
-        elif t < 5:
-            val = 1
-        else:
-            val = 0
-
-        return dict(output=val)
+import utils
+import visu
 
 
 # spatial approximation order
@@ -121,9 +20,7 @@ spat_dom = pi.Domain(spat_bounds, num=100)
 
 # system input implementation
 input_ = sy.SimulationInputWrapper(pi.SimulationInputSum([
-    ConstantInput()
-    # pi.SignalGenerator('sawtooth', np.array(temp_dom), frequency=0.2,
-    #                    scale=1, offset=0, phase_shift=0)
+    utils.ConstantInput()
 ]))
 
 # variables
@@ -142,9 +39,9 @@ input_vector = sp.Matrix([u])
 
 # system parameters
 m_l = 1e0                 # [kg]
-rho = 1.78# 1.78              # [kg/mm] -> line density
+rho = 1.78                # [kg/m] -> line density
 gravity = 9.81
-A_hc = m_l/rho # 2.4*8*14.85 # m**2 -> cross sectional area of chain
+A_hc = 2.4*8*14.85e-6     # m**2 -> cross sectional area of chain
 
 # define approximation base and symbols
 nodes = pi.Domain(spat_bounds, num=N)
@@ -183,7 +80,7 @@ sy.pprint(test_funcs_v, "test functions of v", N)
 
 # creating functions for the integration of the testfunction
 limits_wint = (z, l)
-wint_base = pi.Base([pi.IntegrateFunction(psi_j, limits_wint) for psi_j in fem_base])
+wint_base = pi.Base([utils.IntegrateFunction(psi_j, limits_wint) for psi_j in fem_base])
 test_funcs_half_wint = sp.Matrix(var_pool.new_implemented_functions(
     ["psi_{wvel" + str(i) + "}" for i in range(N)], [(z,)] * N,
     wint_base.fractions, "integrated test functions of w"))
@@ -218,6 +115,7 @@ sy.pprint(projections, "evaluated projections", N)
 
 # initial conditions
 init_samples = np.zeros(len(weights))
+init_samples[0] = 0.01
 
 # derive rhs and simulate
 rhs = sy.derive_first_order_representation(projections, weights, input_vector,
@@ -236,6 +134,6 @@ _, q = sy.simulate_system(
 data = pi.get_sim_result("fem_base", q, temp_dom, spat_dom, 0, 0)
 win = pi.PgAnimatedPlot(data)
 
-hc_visualization(data, nodes)
+visu.hc_visualization(data, nodes)
 
 pi.show()

@@ -13,8 +13,6 @@ from scipy import integrate
 from scipy.linalg import block_diag
 from scipy.optimize import root
 from scipy.interpolate import interp1d, interp2d, RectBivariateSpline, RegularGridInterpolator
-import sympy as sp
-
 from .registry import get_base
 
 __all__ = ["Domain", "EvalData", "Parameters",
@@ -25,7 +23,7 @@ __all__ = ["Domain", "EvalData", "Parameters",
            "project_on_base", "change_projection_base", "back_project_from_base",
            "calculate_scalar_product_matrix", "calculate_base_transformation_matrix",
            "calculate_expanded_base_transformation_matrix", "dot_product_l2",
-           "generic_scalar_product", "IntegrateFunction"]
+           "generic_scalar_product", "integrate_function"]
 
 
 def sanitize_input(input_object, allowed_type):
@@ -471,22 +469,6 @@ class Function(BaseFraction):
                         derivative_handles=der_handles)
 
         return func
-
-
-class IntegrateFunction(Function):
-    """ Function to integrate a Function and return desired value
-
-    gets a testfunction and returns a new Function which calculates a Integral on
-    a defined interval
-    """
-    def __init__(self, eval_handle, limits_int, domain=(-np.inf, np.inf), nonzero=(-np.inf, np.inf), derivative_handles=None):
-        self.func = eval_handle
-        self.limits = limits_int
-        super(IntegrateFunction, self).__init__(eval_handle, domain, nonzero, derivative_handles)
-
-    def __call__(self, z):
-        limits = {(self.limits[0].subs(sp.Symbol("z"), z), self.limits[1])}
-        return integrate_function(self.func, limits)[0]
 
 
 class ComposedFunctionVector(BaseFraction):
