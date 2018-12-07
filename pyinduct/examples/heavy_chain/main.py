@@ -114,7 +114,6 @@ sy.pprint(projections, "evaluated projections", N)
 
 # initial conditions
 init_samples = np.zeros(len(weights))
-init_samples[0] = 0.01
 
 # derive rhs and simulate
 rhs = sy.derive_first_order_representation(projections, weights, input_vector,
