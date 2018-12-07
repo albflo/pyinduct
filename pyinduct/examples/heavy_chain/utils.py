@@ -36,12 +36,22 @@ class IntegrateFunction(pi.Function):
                                                 derivative_handles)
 
     def __call__(self, z=0):
+        funcnonzero = set(self.func.nonzero)
+        funcnonzero = funcnonzero.pop()
         if self.numerical:
+            if ((self.limits[0] >= funcnonzero[1]) or
+                (self.limits[1] <= funcnonzero[0])):
+                return 0.0
             limits = {self.limits}
         elif self.lowerlimit:
+            if ((z >= funcnonzero[1]) or (self.limit <= funcnonzero[0])):
+                return 0.0
             limits = {(z, self.limit)}
         else:
+            if ((self.limit >= funcnonzero[1]) or (z <= funcnonzero[0])):
+                return 0.0
             limits = {(self.limit, z)}
+
         return pi.integrate_function(self.func, limits)[0].item(0)
 
 

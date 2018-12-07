@@ -41,7 +41,7 @@ input_vector = sp.Matrix([u])
 m_l = 1e0                 # [kg]
 rho = 1.78                # [kg/m] -> line density
 gravity = 9.81
-A_hc = 2.4*8*14.85e-6     # m**2 -> cross sectional area of chain
+A_hc = 1#2.4*8*14.85e-6     # m**2 -> cross sectional area of chain
 
 # define approximation base and symbols
 nodes = pi.Domain(spat_bounds, num=N)
@@ -94,13 +94,12 @@ for psi_w, psi_wvel, psi_v in zip(test_funcs_w, test_funcs_wint, test_funcs_v):
     projections.append(
         sp.Integral(sp.diff(w_approx, t) * psi_w, limits)
         + sp.Integral(sp.diff(v_approx, t) * psi_v, limits)
-        - sp.Integral(v_approx * psi_w, limits)
-        + sp.Integral(sp.diff(w_approx, z) * psi_w, limits)
-        - m_l * sp.diff(w_approx, z).subs(z, l_hc) * psi_w.subs(z, l_hc)
-        + 1/(A_hc * rho) * u * psi_w.subs(z, 0)
-        - sp.Integral(sp.diff(w_approx, z) * psi_w, limits)
-        + (l_hc + m_l/(A_hc * rho)) * sp.Integral(sp.diff(w_approx, z) * sp.diff(psi_w, z), limits)
-        - sp.Integral(sp.diff(w_approx, z) * sp.diff(psi_w, z) * z, limits)
+        #- sp.Integral(v_approx * psi_w, limits) # <- used to introduce the velocity input
+        - u*psi_wvel.subs(z, 0)
+        - sp.Integral(psi_wvel*sp.diff(v_approx, z), limits)
+        + m_l/(A_hc * rho) * psi_v.subs(z, l) * sp.diff(v_approx, t).subs(z, l)
+        + 1/(A_hc * rho) * psi_v.subs(z, 0) * tau.subs(z, 0) * sp.diff(w_approx, z).subs(z, 0)
+        + 1/(A_hc * rho) * sp.Integral(tau * sp.diff(psi_v, z) * sp.diff(w_approx, z), limits)
     )
 projections = sp.Matrix(projections)
 sy.pprint(projections, "projections", N)
@@ -115,7 +114,6 @@ sy.pprint(projections, "evaluated projections", N)
 
 # initial conditions
 init_samples = np.zeros(len(weights))
-init_samples[0] = 0.01
 
 # derive rhs and simulate
 rhs = sy.derive_first_order_representation(projections, weights, input_vector,
