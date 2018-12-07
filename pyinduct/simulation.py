@@ -28,6 +28,9 @@ from .placeholder import (Scalars, TestFunction, Input, FieldVariable,
                           get_common_target, get_common_form)
 from .registry import get_base, register_base
 
+# TODO only for testing the matrices of both simulations
+import pickle
+
 __all__ = ["SimulationInput", "SimulationInputSum", "WeakFormulation",
            "parse_weak_formulation",
            "create_state_space", "StateSpace", "simulate_state_space",
@@ -707,6 +710,15 @@ class CanonicalForm(object):
             f_mat[-self.dim_x:] = self.matrices["f"]
 
         a_matrices.update({0: f_mat})
+
+        # ======================================================================
+        # TODO only for testing the matrices of both simulations
+        fileName = "SSS_Stef"
+        fileObject = open(fileName, 'wb')
+        pickle.dump(a_matrices, fileObject)
+        pickle.dump(b_matrices, fileObject)
+        fileObject.close()
+        # ======================================================================
 
         ss = StateSpace(a_matrices, b_matrices,
                         input_handles=self.input_functions)

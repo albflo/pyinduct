@@ -7,20 +7,26 @@ import visu
 
 
 # spatial approximation order
-N = 5
+N = 20
+
+# system parameters
+load_mass = 1e0
+a_rho = 1e2
+gravity = 9.81
+chain_length = 1
+force = 1e1
 
 # temporal domain
-T = 6
-temp_dom = pi.Domain((0, T), num=100)
+T = 10
+temp_dom = pi.Domain((0, T), step=0.01)
 
 # spatial domain
-l = 1.25
-spat_bounds = (0, l)
-spat_dom = pi.Domain(spat_bounds, num=100)
+spat_bounds = (0, chain_length)
+spat_dom = pi.Domain(spat_bounds, step=0.5)
 
 # system input implementation
 input_ = sy.SimulationInputWrapper(pi.SimulationInputSum([
-    utils.ConstantInput()
+    utils.ConstantInput(force)
 ]))
 
 # variables
@@ -35,13 +41,6 @@ z = var_pool.new_symbol("z", "location")
 input_arg = var_pool.new_symbol("input_arg", "simulation input argument")
 u = var_pool.new_implemented_function("u", (input_arg,), input_, "input")
 input_vector = sp.Matrix([u])
-
-
-# system parameters
-m_l = 1e0                 # [kg]
-rho = 1.78                # [kg/m] -> line density
-gravity = 9.81
-A_hc = 1#2.4*8*14.85e-6     # m**2 -> cross sectional area of chain
 
 # define approximation base and symbols
 nodes = pi.Domain(spat_bounds, num=N)
@@ -78,28 +77,21 @@ test_funcs_v = sp.Matrix.vstack(test_funcs_half_w * 0, test_funcs_half_v)
 sy.pprint(test_funcs_w, "test functions of w", N)
 sy.pprint(test_funcs_v, "test functions of v", N)
 
-# creating functions for the integration of the testfunction
-limits_wint = (z, l)
-wint_base = pi.Base([utils.IntegrateFunction(psi_j, limits_wint) for psi_j in fem_base])
-test_funcs_half_wint = sp.Matrix(var_pool.new_implemented_functions(
-    ["psi_{wvel" + str(i) + "}" for i in range(N)], [(z,)] * N,
-    wint_base.fractions, "integrated test functions of w"))
-test_funcs_wint = sp.Matrix.vstack(test_funcs_half_wint, test_funcs_half_v * 0)
-
+# subs param variables
+alpha_0 = 1
+alpha_1 = alpha_0*load_mass/a_rho
 # project on test functions
 projections = list()
 limits = (z, spat_bounds[0], spat_bounds[1])
-tau = gravity * (A_hc * rho * l - A_hc * rho * z + m_l)
-for psi_w, psi_wvel, psi_v in zip(test_funcs_w, test_funcs_wint, test_funcs_v):
+tau = gravity * (load_mass + a_rho*z)
+for psi_w, psi_v in zip(test_funcs_w, test_funcs_v):
     projections.append(
-        sp.Integral(sp.diff(w_approx, t) * psi_w, limits)
-        + sp.Integral(sp.diff(v_approx, t) * psi_v, limits)
-        #- sp.Integral(v_approx * psi_w, limits) # <- used to introduce the velocity input
-        - u*psi_wvel.subs(z, 0)
-        - sp.Integral(psi_wvel*sp.diff(v_approx, z), limits)
-        + m_l/(A_hc * rho) * psi_v.subs(z, l) * sp.diff(v_approx, t).subs(z, l)
-        + 1/(A_hc * rho) * psi_v.subs(z, 0) * tau.subs(z, 0) * sp.diff(w_approx, z).subs(z, 0)
-        + 1/(A_hc * rho) * sp.Integral(tau * sp.diff(psi_v, z) * sp.diff(w_approx, z), limits)
+        sp.Integral(sp.diff(w_approx, t) * psi_w, limits) * 1
+        + sp.Integral(sp.diff(v_approx, t) * psi_v, limits) * alpha_0
+        - sp.Integral(v_approx * psi_w, limits) * 1
+        + sp.diff(v_approx, t).subs(z, 0) * psi_v.subs(z, 0) * alpha_1
+        + sp.Integral(sp.diff(w_approx, z) * tau * sp.diff(psi_v, z), limits) * alpha_0/a_rho
+        - u * psi_v.subs(z, chain_length) * alpha_0/a_rho
     )
 projections = sp.Matrix(projections)
 sy.pprint(projections, "projections", N)
@@ -130,8 +122,8 @@ _, q = sy.simulate_system(
 
 # visualization
 data = pi.get_sim_result("fem_base", q, temp_dom, spat_dom, 0, 0)
-win = pi.PgAnimatedPlot(data)
+# win = pi.PgAnimatedPlot(data)
 
-visu.hc_visualization(data, nodes)
+# visu.hc_visualization(data, nodes)
 
-pi.show()
+# pi.show()

@@ -11,6 +11,8 @@ from sympy.utilities.lambdify import implemented_function
 
 __all__ = ["VariablePool"]
 
+# TODO only for testing the matrices of both simulations
+import pickle
 
 class VariablePool:
     registry = dict()
@@ -510,6 +512,15 @@ def derive_first_order_representation(expression, funcs, input_,
             interim_results.update({
                 "E1": E1, "E0": E0, "G": G, "A": A, "B": B,
             })
+
+        # ======================================================================
+        # TODO only for testing the matrices of both simulations
+        fileName = "SSS_Sym"
+        fileObject = open(fileName, 'wb')
+        pickle.dump(A, fileObject)
+        pickle.dump(B, fileObject)
+        fileObject.close()
+        # ======================================================================
 
         return A * funcs + B * input_
 

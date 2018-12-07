@@ -57,19 +57,20 @@ class IntegrateFunction(pi.Function):
 
 class ConstantInput(pi.SimulationInput):
 
-    def __init__(self):
+    def __init__(self, force):
         pi.SimulationInput.__init__(self)
+        self.force = force
 
     def _calc_output(self, **kwargs):
         t = kwargs["time"]
         if t < 1:
             val = 0
         elif t < 2:
-            val = -1
+            val = self.force
         elif t < 4:
             val = 0
         elif t < 5:
-            val = 1
+            val = -self.force
         else:
             val = 0
 
