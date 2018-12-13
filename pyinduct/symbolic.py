@@ -13,6 +13,7 @@ __all__ = ["VariablePool"]
 
 # TODO only for testing the matrices of both simulations
 import pickle
+import os.path
 
 class VariablePool:
     registry = dict()
@@ -230,7 +231,7 @@ class SymbolicFeedback(SimulationInput):
 
 def simulate_system(rhs, funcs, init_conds, base_label, input_syms,
                     time_sym, temp_domain, settings=None):
-    """
+    r"""
     Simulate finite dimensional ode according to the provided
     right hand side (:code:`rhs`)
 
@@ -516,6 +517,8 @@ def derive_first_order_representation(expression, funcs, input_,
         # ======================================================================
         # TODO only for testing the matrices of both simulations
         fileName = "SSS_Sym"
+        if os.path.isfile(fileName):
+            fileName = fileName + "_new"
         fileObject = open(fileName, 'wb')
         pickle.dump(A, fileObject)
         pickle.dump(B, fileObject)

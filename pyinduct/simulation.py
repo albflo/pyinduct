@@ -306,7 +306,7 @@ def simulate_system(weak_form, initial_states,
 
 def simulate_systems(weak_forms, initial_states, temporal_domain, spatial_domains, derivative_orders=None,
                      settings=None):
-    """
+    r"""
     Convenience wrapper that encapsulates the whole simulation process.
 
     Args:
